@@ -237,23 +237,11 @@ void ReleaseAltKey()
 
 void ForceForeground(HWND hwnd)
 {
-    HWND fg = GetForegroundWindow();
-    DWORD fgThread = GetWindowThreadProcessId(fg, NULL);
-    DWORD myThread = GetCurrentThreadId();
-
-    AllowSetForegroundWindow(GetCurrentProcessId());
-    AttachThreadInput(fgThread, myThread, TRUE);
-
+    AllowSetForegroundWindow(ASFW_ANY);
     ShowWindow(hwnd, SW_SHOW);
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-
-    BringWindowToTop(hwnd);
+    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     SetForegroundWindow(hwnd);
-    SetActiveWindow(hwnd);
-    SetFocus(hwnd);
-
-    AttachThreadInput(fgThread, myThread, FALSE);
+    BringWindowToTop(hwnd);
 }
 
 void ResizeToFitList()
@@ -319,23 +307,16 @@ void SwitchToSelected()
     if (!IsWindow(target))
         return;
 
+    // Restore if minimized
     if (IsIconic(target))
         ShowWindow(target, SW_RESTORE);
     else
         ShowWindow(target, SW_SHOW);
 
-    HWND fg = GetForegroundWindow();
-    DWORD fgThread = GetWindowThreadProcessId(fg, NULL);
-    DWORD targetThread = GetWindowThreadProcessId(target, NULL);
-
-    AttachThreadInput(fgThread, targetThread, TRUE);
-
+    // Simple, direct foreground switch
+    AllowSetForegroundWindow(ASFW_ANY);
     SetForegroundWindow(target);
     BringWindowToTop(target);
-    SetActiveWindow(target);
-    SetFocus(target);
-
-    AttachThreadInput(fgThread, targetThread, FALSE);
 
     ReleaseAltKey();
 }
