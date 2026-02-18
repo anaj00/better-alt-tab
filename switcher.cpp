@@ -180,6 +180,14 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM)
     if (wcslen(title) == 0) return TRUE;
     if (wcscmp(title, L"Program Manager") == 0) return TRUE;
 
+    // Filter out common utility windows
+    wchar_t className[256];
+    GetClassNameW(hwnd, className, 256);
+    
+    if (wcscmp(className, L"Windows.UI.Core.CoreWindow") == 0) return TRUE;
+    if (wcscmp(className, L"XAML_WindowClass") == 0) return TRUE;
+    if (wcscmp(className, L"Windows.Internal.CompositionSwapChainPanel") == 0) return TRUE;
+
     HICON icon = GetWindowIcon(hwnd);
 
     g_windows.push_back({ hwnd, title, icon });
