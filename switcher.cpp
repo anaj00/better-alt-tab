@@ -37,7 +37,8 @@
 #define WM_HIDE_SWITCHER (WM_USER + 4)
 #define WM_TRAY          (WM_USER + 5)
 
-#define ID_TRAY_EXIT     1001
+#define ID_TRAY_EXIT       1001
+#define ID_TRAY_STARTUP    1002
 
 // ============================================================
 // COLORS
@@ -75,6 +76,13 @@ HFONT g_fontSub = NULL;
 HBRUSH g_bgBrush = NULL;
 
 NOTIFYICONDATAW g_nid = {};
+
+// ============================================================
+// FORWARD DECLARATIONS
+// ============================================================
+
+void RegisterStartup();
+void UnregisterStartup();
 
 // ============================================================
 // ACRYLIC BLUR (Windows 10/11 undocumented API)
@@ -357,7 +365,7 @@ void AddTrayIcon(HWND hwnd)
     g_nid.uCallbackMessage = WM_TRAY;
     g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 
-    wcscpy_s(g_nid.szTip, L"Raycast AltTab Switcher (Right-click to Exit)");
+    wcscpy_s(g_nid.szTip, L"Better Alt+Tab");
 
     Shell_NotifyIconW(NIM_ADD, &g_nid);
 }
@@ -622,6 +630,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             GetCursorPos(&pt);
 
             HMENU menu = CreatePopupMenu();
+            AppendMenuW(menu, MF_STRING, ID_TRAY_STARTUP, L"Run at startup");
+            AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
             AppendMenuW(menu, MF_STRING, ID_TRAY_EXIT, L"Exit");
 
             SetForegroundWindow(hwnd);
@@ -633,6 +643,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     }
 
     case WM_COMMAND:
+        if (LOWORD(wp) == ID_TRAY_STARTUP)
+        {
+            RegisterStartup();
+            return 0;
+        }
         if (LOWORD(wp) == ID_TRAY_EXIT)
         {
             RemoveTrayIcon();
@@ -661,6 +676,38 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     }
 
     return DefWindowProcW(hwnd, msg, wp, lp);
+}
+
+// ============================================================
+// STARTUP REGISTRY
+// ============================================================
+
+void RegisterStartup()
+{
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, 
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 
+        0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        RegSetValueExW(hKey, L"MinimalAltTab", 0, REG_SZ, 
+            (const BYTE*)exePath, (wcslen(exePath) + 1) * sizeof(wchar_t));
+        RegCloseKey(hKey);
+    }
+}
+
+void UnregisterStartup()
+{
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER,
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        RegDeleteValueW(hKey, L"MinimalAltTab");
+        RegCloseKey(hKey);
+    }
 }
 
 // ============================================================
