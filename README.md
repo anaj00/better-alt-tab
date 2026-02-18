@@ -1,4 +1,4 @@
-# Minimal Alt+Tab Switcher
+# Better Alt+Tab
 
 A sleek, minimal window switcher for Windows that replaces the default Alt+Tab with a modern, Raycast-inspired interface.
 
