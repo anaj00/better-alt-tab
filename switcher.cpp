@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
+#include <dwmapi.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -11,6 +12,7 @@
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "dwmapi.lib")
 
 // ============================================================
 // CONFIG
@@ -18,16 +20,16 @@
 
 #define WIN_W       520
 #define MAX_VISIBLE 8
-#define PADDING_V   8
+#define PADDING_V   0
 #define ROUND_RAD   0
 
 #define WINDOW_ALPHA 245
 
-#define TITLE_FONT_SIZE 16
+#define TITLE_FONT_SIZE 15
 #define SUB_FONT_SIZE   11
 
 // Row height derived from font sizes (this prevents clipping)
-#define ITEM_H (TITLE_FONT_SIZE + 12)
+#define ITEM_H 28
 
 #define WM_SHOW_SWITCHER (WM_USER + 1)
 #define WM_DO_SWITCH     (WM_USER + 2)
@@ -41,11 +43,11 @@
 // COLORS
 // ============================================================
 
-#define BG_COLOR        RGB(18, 18, 20)
-#define SEL_BG_COLOR    RGB(45, 45, 55)
-#define TITLE_COLOR     RGB(245, 245, 250)
-#define SUB_COLOR       RGB(160, 160, 175)
-#define DIVIDER_COLOR   RGB(38, 38, 45)
+#define BG_COLOR        RGB(20, 20, 22)
+#define SEL_BG_COLOR    RGB(50, 50, 65)
+#define TITLE_COLOR     RGB(250, 250, 255)
+#define SUB_COLOR       RGB(140, 140, 160)
+#define DIVIDER_COLOR   RGB(40, 40, 50)
 
 // ============================================================
 // STATE
@@ -117,8 +119,8 @@ void EnableAcrylic(HWND hwnd)
     policy.AccentFlags = 2;
 
     // GradientColor = AABBGGRR
-    // AA = opacity
-    policy.GradientColor = (0xCC << 24) | (0x202020);
+    // AA = opacity (lower = more transparent)
+    policy.GradientColor = (0xE0 << 24) | (0x141414);
 
     WINDOWCOMPOSITIONATTRIBDATA data = {};
     data.Attrib = 19; // WCA_ACCENT_POLICY
@@ -132,9 +134,18 @@ void EnableAcrylic(HWND hwnd)
 // HELPERS
 // ============================================================
 
+bool IsCloakedWindow(HWND hwnd)
+{
+    typedef enum { WM_CLOAKED = 0 } DWMWINDOWATTRIBUTE;
+    BOOL isCloaked = FALSE;
+    DwmGetWindowAttribute(hwnd, WM_CLOAKED, &isCloaked, sizeof(isCloaked));
+    return isCloaked;
+}
+
 bool IsTaskbarWindow(HWND hwnd)
 {
     if (!IsWindowVisible(hwnd)) return false;
+    if (IsCloakedWindow(hwnd)) return false;
 
     HWND owner = GetWindow(hwnd, GW_OWNER);
     LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -379,17 +390,18 @@ void DrawListItem(DRAWITEMSTRUCT* dis)
 
     SetBkMode(dc, TRANSPARENT);
 
-    // Title
+    // Title (single-line, vertically centered)
     SelectObject(dc, g_fontTitle);
     SetTextColor(dc, TITLE_COLOR);
 
     RECT titleRc = rc;
-    titleRc.left = rc.left + 12;
-    titleRc.top += 7;
+    titleRc.left = rc.left + 10;
+    titleRc.top += (ITEM_H - TITLE_FONT_SIZE) / 2 - 1;
     titleRc.right -= 10;
+    titleRc.bottom = titleRc.top + TITLE_FONT_SIZE + 4;
 
     DrawTextW(dc, title, -1, &titleRc,
-        DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT);
+        DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT | DT_VCENTER);
 }
 
 LRESULT CALLBACK ListSubclassProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp,
@@ -513,7 +525,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         // Fonts
         g_fontTitle = CreateFontW(
             TITLE_FONT_SIZE, 0, 0, 0,
-            FW_BOLD,
+            FW_NORMAL,
             FALSE, FALSE, FALSE,
             DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS,
@@ -629,6 +641,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             return 0;
         }
         break;
+
+    case WM_KILLFOCUS:
+        if (g_isReady.load(std::memory_order_acquire))
+            HideSwitcher();
+        return 0;
 
     case WM_DESTROY:
     {
