@@ -16,18 +16,18 @@
 // CONFIG
 // ============================================================
 
-#define WIN_W       700
+#define WIN_W       520
 #define MAX_VISIBLE 8
-#define PADDING_V   14
-#define ROUND_RAD   18
+#define PADDING_V   8
+#define ROUND_RAD   0
 
 #define WINDOW_ALPHA 245
 
-#define TITLE_FONT_SIZE 22
-#define SUB_FONT_SIZE   14
+#define TITLE_FONT_SIZE 16
+#define SUB_FONT_SIZE   11
 
 // Row height derived from font sizes (this prevents clipping)
-#define ITEM_H (TITLE_FONT_SIZE + SUB_FONT_SIZE + 44)
+#define ITEM_H (TITLE_FONT_SIZE + 12)
 
 #define WM_SHOW_SWITCHER (WM_USER + 1)
 #define WM_DO_SWITCH     (WM_USER + 2)
@@ -371,60 +371,17 @@ void DrawListItem(DRAWITEMSTRUCT* dis)
 
     SetBkMode(dc, TRANSPARENT);
 
-    // Icon
-    int iconSize = 34;
-    int iconX = rc.left + 18;
-    int iconY = rc.top + (ITEM_H - iconSize) / 2;
-
-    if (dis->itemID < g_windows.size())
-    {
-        DrawIconEx(
-            dc,
-            iconX, iconY,
-            g_windows[dis->itemID].icon,
-            iconSize, iconSize,
-            0, NULL,
-            DI_NORMAL
-        );
-    }
-
-    int textLeft = rc.left + 18 + iconSize + 14;
-
     // Title
     SelectObject(dc, g_fontTitle);
     SetTextColor(dc, TITLE_COLOR);
 
     RECT titleRc = rc;
-    titleRc.left = textLeft;
-    titleRc.top += 12;
-    titleRc.right -= 16;
+    titleRc.left = rc.left + 12;
+    titleRc.top += 7;
+    titleRc.right -= 10;
 
     DrawTextW(dc, title, -1, &titleRc,
         DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT);
-
-    // Subtitle
-    SelectObject(dc, g_fontSub);
-    SetTextColor(dc, SUB_COLOR);
-
-    std::wstring subtitle = L"HWND: " + std::to_wstring((UINT_PTR)g_windows[dis->itemID].hwnd);
-
-    RECT subRc = rc;
-    subRc.left = textLeft;
-    subRc.top += 12 + TITLE_FONT_SIZE + 12;
-    subRc.right -= 16;
-
-    DrawTextW(dc, subtitle.c_str(), -1, &subRc,
-        DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT);
-
-    // Divider line
-    HPEN pen = CreatePen(PS_SOLID, 1, DIVIDER_COLOR);
-    HPEN oldPen = (HPEN)SelectObject(dc, pen);
-
-    MoveToEx(dc, rc.left + 14, rc.bottom - 1, NULL);
-    LineTo(dc, rc.right - 14, rc.bottom - 1);
-
-    SelectObject(dc, oldPen);
-    DeleteObject(pen);
 }
 
 LRESULT CALLBACK ListSubclassProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp,
